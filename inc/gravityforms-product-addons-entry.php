@@ -148,8 +148,8 @@ class WC_GFPA_Entry {
 						return false;
 					}, 99999 );
 
-
-					$user_id = $the_order->get_user_id() ? $the_order->get_user_id() : $lead_data['created_by'];
+					$default_created_by = $form_data['created_by'] ?? get_current_user_id();
+					$user_id = $the_order->get_user_id() ? $the_order->get_user_id() : $default_created_by;
 					if ($user_id) {
 						$lead_data['created_by'] = $user_id;
 					}

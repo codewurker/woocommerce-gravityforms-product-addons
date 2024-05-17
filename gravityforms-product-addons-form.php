@@ -152,23 +152,6 @@ class woocommerce_gravityforms_product_form {
 				<?php endif; ?>
 			<?php endif; ?>
 
-            <style>
-                .hidden-total {
-                    display: none !important;
-                }
-
-                .product_totals ul {
-                    margin-left: 0;
-                    padding-left: 0;
-                }
-
-                .product_totals ul li {
-                    list-style: none;
-                    margin-bottom: 1rem;
-                }
-
-            </style>
-
 			<?php
 			echo '</div>';
 		}
@@ -181,7 +164,7 @@ class woocommerce_gravityforms_product_form {
         <div class="product_totals">
             <ul id="gform_totals_<?php echo $this->form_id; ?>"
                 class="gform_fields <?php echo rgar( $form_meta, "labelPlacement", "above" ) . ' ' . $description_class; ?>">
-                <li class="gfield" <?php
+                <li class="gfield wcgfpa_subtotal" <?php
 				if ( $disable_label_subtotal == 'yes' ) {
 					echo 'style="display:none !important;"';
 				}
@@ -191,7 +174,7 @@ class woocommerce_gravityforms_product_form {
                         <span class="formattedBasePrice ginput_total"></span>
                     </div>
                 </li>
-                <li class="gfield" <?php
+                <li class="gfield wcgfpa_options_total" <?php
 				if ( $disable_label_options == 'yes' ) {
 					echo 'style="display:none !important;"';
 				}
@@ -201,15 +184,15 @@ class woocommerce_gravityforms_product_form {
                         <span class="formattedVariationTotal ginput_total"></span>
                     </div>
                 </li>
-                <li class="gfield" <?php
+                <li class="gfield wcgfpa_grand_total" <?php
 				if ( $disable_label_total == 'yes' ) {
 					echo 'style="display:none !important;"';
 				}
 				?> >
-                    <label class="gfield_label"><?php echo $label_total; ?></label>
-                    <div class="ginput_container">
+                    <p class="price">
+                        <?php echo $label_total; ?>
                         <span class="formattedTotalPrice ginput_total"></span>
-                    </div>
+                    </p>
                 </li>
             </ul>
         </div>
@@ -240,7 +223,6 @@ class woocommerce_gravityforms_product_form {
 
             gform.addFilter('gform_product_total', function (total, formId) {
                 const product_id = jQuery("input[name=product_id]").val();
-
                 if (wc_gravityforms_params.use_ajax[product_id]) {
                     return update_dynamic_price_ajax(total, formId);
                 } else {

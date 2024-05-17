@@ -53,7 +53,7 @@
 			'id'    => 'gravityform-display_description',
 			'label' => __( 'Display Description', 'wc_gf_addons' ),
 			'value' => isset( $gravity_form_data['display_description'] ) && $gravity_form_data['display_description'] ? 'yes' : ''
-		) );;
+		) );
 		?>
 	</div>
 

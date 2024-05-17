@@ -15,7 +15,7 @@ class WC_GFPA_Main {
 	private static $instance;
 
 	public static function register() {
-		if ( self::$instance == null ) {
+		if ( empty( self::$instance ) ) {
 			self::$instance = new WC_GFPA_Main();
 		}
 	}
@@ -25,8 +25,8 @@ class WC_GFPA_Main {
 	 *
 	 * @return WC_GFPA_Main
 	 */
-	public static function instance() {
-		if ( self::$instance == null ) {
+	public static function instance(): WC_GFPA_Main {
+		if ( empty( self::$instance ) ) {
 			self::$instance = new WC_GFPA_Main();
 		}
 
@@ -84,6 +84,9 @@ class WC_GFPA_Main {
 		require 'inc/gravityforms-product-addons-submission-helpers.php';
 		require 'inc/gravityforms-product-addons-field-helpers.php';
 
+		// Custom merge tags
+		require 'inc/gravityforms-product-addons-merge-tags.php';
+
 		// Register the admin controller.
 		require 'admin/gravityforms-product-addons-admin.php';
 		WC_GFPA_Admin_Controller::register();
@@ -93,6 +96,7 @@ class WC_GFPA_Main {
 
 		require 'inc/gravityforms-product-addons-ajax.php';
 		require 'inc/gravityforms-product-addons-bulk-variations.php';
+		require 'inc/gravityforms-product-addons-cart-item.php';
 		require 'inc/gravityforms-product-addons-cart.php';
 		require 'inc/gravityforms-product-addons-cart-edit.php';
 		require 'inc/gravityforms-product-addons-cart-validation.php';
@@ -114,8 +118,16 @@ class WC_GFPA_Main {
 		WC_GFPA_Stock::register();
 		WC_GFPA_Structured_Data::register();
 		WC_GFPA_Export::register();
-
+		WC_GFPA_Merge_Tags::register();
+		$this->load_integrations();
 		add_action( 'init', array( $this, 'on_init' ) );
+	}
+
+	public function load_integrations() {
+		if ( class_exists( 'WC_Bookings' ) ) {
+			require 'inc/integrations/bookings.php';
+			WC_GFPA_Integrations_Bookings::register();
+		}
 	}
 
 	public function on_init() {
@@ -548,11 +560,30 @@ class WC_GFPA_Main {
 		return apply_filters( 'woocommerce_gforms_get_product_reorder_form_data', $working_data, $post_id );
 	}
 
+	public function has_gravity_form( int $product_id ): bool {
+		$gravity_form_data = $this->get_gravity_form_data( $product_id );
+		if ( $gravity_form_data && is_array( $gravity_form_data ) && isset( $gravity_form_data['id'] ) && intval( $gravity_form_data['id'] ) > 0 ) {
+			return true;
+		}
+
+		return false;
+	}
+
+	public function get_gravity_form_id( $product_id ) {
+		$gravity_form_data = $this->get_gravity_form_data( $product_id );
+		if ( $gravity_form_data && is_array( $gravity_form_data ) && isset( $gravity_form_data['id'] ) && intval( $gravity_form_data['id'] ) > 0 ) {
+			return $gravity_form_data['id'];
+		}
+
+		return false;
+	}
+
 	public function get_gravity_form_data( $post_id, $context = 'single' ) {
 		$product = wc_get_product( $post_id );
 		$data    = false;
 		if ( $product ) {
 			$data = $product->get_meta( '_gravity_form_data' );
+
 		}
 
 		// New defaults since 3.5.0
@@ -613,6 +644,14 @@ class WC_GFPA_Main {
 		}
 
 		return $hash;
+	}
+
+
+	public function log_debug( $message ) {
+		if ( class_exists( 'GFLogging' ) ) {
+			GFLogging::include_logger();
+			GFLogging::log_message( 'woocommerce-gravityforms-product-addons', $message, KLogger::DEBUG );
+		}
 	}
 }
 

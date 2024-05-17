@@ -3,7 +3,7 @@
  * Plugin Name: WooCommerce Gravity Forms Product Add-Ons
  * Plugin URI: http://woothemes.com/products/gravity-forms-add-ons/
  * Description: Allows you to use Gravity Forms on individual WooCommerce products. Requires the Gravity Forms plugin to work.
- * Version: 3.5.4
+ * Version: 3.6.0
  * Author: Element Stark
  * Author URI: https://www.elementstark.com/
  * Developer: Lucas Stark
@@ -17,7 +17,7 @@
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
 
  * WC requires at least: 7.0
- * WC tested up to: 8.5
+ * WC tested up to: 8.6
  * Woo: 18633:a6ac0ab1a1536e3a357ccf24c0650ed0
  *
  * @package WooCommerce Gravity Forms Product Add-Ons
@@ -30,21 +30,19 @@ if ( ! function_exists( 'is_woocommerce_active' ) ) {
 	require_once 'woo-includes/woo-functions.php';
 }
 
-if ( is_woocommerce_active() ) {
-
-	// Declare support for features.
-	add_action(
-		'before_woocommerce_init',
-		function () {
-			if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
-				\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', __FILE__, true );
-			}
+// Declare support for features.
+add_action(
+	'before_woocommerce_init',
+	function () {
+		if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
+			\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', __FILE__, true );
+			\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'cart_checkout_blocks', __FILE__, true );
 		}
-	);
+	}
+);
 
-
+if ( is_woocommerce_active() ) {
 	load_plugin_textdomain( 'wc_gf_addons', null, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
-
 	add_action( 'init', 'wc_gravityforms_product_addons_load_textdomain', 0 );
 
 	function wc_gravityforms_product_addons_load_textdomain() {

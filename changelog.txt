@@ -1,4 +1,23 @@
 *** Gravity Forms Product Add-Ons Changelog ***
+2024.01.27 - version 3.6.0
+    * New: Integration with WooCommerce Bookings. The integration is basic, but allows for booking product costs to be correctly displayed in the totals section on the product page.
+    * New: Updated styles to modernize and cleanup the look of the totals section.
+    * New: Include custom merge tags for WooCommerce order and order item data.
+        - {wc_order:order_id} - The WooCommerce order ID.
+        - {wc_order:order_number} - The WooCommerce order number.
+        - {wc_order:customer_id} - The WooCommerce order customer ID.
+        - {wc_order:customer_email} - The WooCommerce order date.
+        - {wc_order:billing_email} - The WooCommerce order billing email.
+        - {wc_order:[ORDER_PROPERTY]} - Any other WooCommerce order property.
+    * New Include custom merge tags for WooCommerce product information.
+        - {wc_product:product_id} - The WooCommerce product ID.
+        - {wc_product:product_sku} - The WooCommerce product SKU.
+        - {wc_product:product_name} - The WooCommerce product name.
+        - {wc_product:product_price} - The WooCommerce product price.
+        - {wc_product:product_type} - The WooCommerce product type.
+        - {wc_product:[PRODUCT_PROPERTY]} - Any other WooCommerce product property.
+    * WC Compatibility Tags.
+
 2024.01.09 - version 3.5.4
     * WC Compatibility Tags.
     * Fix: Fix issue with the grand total not properly applying to the cart item.

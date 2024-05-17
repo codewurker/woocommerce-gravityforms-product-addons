@@ -6,7 +6,7 @@ class WC_GFPA_Cart {
 
 	public static function register() {
 		if ( self::$instance == null ) {
-			self::$instance = new WC_GFPA_Cart;
+			self::$instance = new WC_GFPA_Cart();
 		}
 	}
 
@@ -27,19 +27,24 @@ class WC_GFPA_Cart {
 	private function __construct() {
 		// Filters for cart actions
 
-		add_filter( 'woocommerce_add_cart_item_data', array( $this, 'add_cart_item_data' ), 10, 3 );
-		add_filter( 'woocommerce_get_cart_item_from_session', array( $this, 'get_cart_item_from_session' ), 10, 2 );
-		add_filter( 'woocommerce_get_item_data', array( $this, 'get_item_data' ), 10, 2 );
-		add_filter( 'woocommerce_add_cart_item', array( $this, 'add_cart_item' ), 10, 1 );
+		add_filter( 'woocommerce_add_cart_item_data', [ $this, 'add_cart_item_data' ], 10, 3 );
+		add_filter( 'woocommerce_get_cart_item_from_session', [ $this, 'get_cart_item_from_session' ], 10, 2 );
+		add_filter( 'woocommerce_get_item_data', [ $this, 'get_item_data' ], 10, 2 );
+		add_filter( 'woocommerce_add_cart_item', [ $this, 'add_cart_item' ], 10, 1 );
 
-		add_action( 'woocommerce_checkout_create_order_line_item', array( $this, 'order_item_meta' ), 10, 3 );
-		add_filter( 'woocommerce_add_to_cart_validation', array( $this, 'add_to_cart_validation' ), 99, 3 );
+		add_action( 'woocommerce_checkout_create_order_line_item', [ $this, 'order_item_meta' ], 10, 3 );
+		add_filter( 'woocommerce_add_to_cart_validation', [ $this, 'add_to_cart_validation' ], 99, 5 );
 
 		//Order Again
-		add_filter( 'woocommerce_order_again_cart_item_data', array(
-			$this,
-			'on_get_order_again_cart_item_data'
-		), 10, 3 );
+		add_filter(
+			'woocommerce_order_again_cart_item_data',
+			[
+				$this,
+				'on_get_order_again_cart_item_data',
+			],
+			10,
+			3
+		);
 	}
 
 	/**
@@ -51,11 +56,12 @@ class WC_GFPA_Cart {
 	 * @param $valid
 	 * @param $product_id
 	 * @param $quantity
+	 * @param null $variation_id
+	 * @param null $variations
 	 *
 	 * @return mixed
 	 */
-	public function add_to_cart_validation( $valid, $product_id, $quantity ) {
-
+	public function add_to_cart_validation( $valid, $product_id, $quantity, $variation_id = null, $variations = null) {
 		$changing_pages = false;
 		if ( ! $valid ) {
 			return false;
@@ -69,18 +75,26 @@ class WC_GFPA_Cart {
 			return false;
 		}
 
+		// Prevent parent variable product from being added to cart.
+		$product = wc_get_product( $product_id );
+		if ( empty( $variation_id ) && $product && $product->is_type( 'variable' ) ) {
+			// No variation was selected.
+			$valid = false;
+		}
+
 		if ( $gravity_form_data && is_array( $gravity_form_data ) && isset( $gravity_form_data['id'] ) && intval( $gravity_form_data['id'] ) > 0 && isset( $_POST['gform_form_id'] ) && is_numeric( $_POST['gform_form_id'] ) ) {
 
 			//Gravity forms generates errors and warnings.  To prevent these from conflicting with other things, we are going to disable warnings and errors.
 			$err_level = error_reporting();
 			error_reporting( 0 );
 
+
 			if ( ! class_exists( 'GFFormDisplay' ) ) {
-				require_once( GFCommon::get_base_path() . "/form_display.php" );
+				require_once GFCommon::get_base_path() . '/form_display.php';
 			}
 
 			if ( ! class_exists( 'RGFormsModel' ) ) {
-				require_once( GFCommon::get_base_path() . "/forms_model.php" );
+				require_once GFCommon::get_base_path() . '/forms_model.php';
 			}
 
 			$form_id = $_POST['gform_form_id'];
@@ -91,8 +105,8 @@ class WC_GFPA_Cart {
 			//Remove all post_submission hooks so data does not get sent to feeds such as Zapier
 			$this->disable_gform_after_submission_hooks( $form_id );
 
-			GFFormDisplay::$submission = array();
-			require_once( GFCommon::get_base_path() . "/form_display.php" );
+			GFFormDisplay::$submission = [];
+			require_once GFCommon::get_base_path() . '/form_display.php';
 			$_POST['gform_submit'] = $_POST['gform_old_submit'];
 
 			GFCommon::log_debug( __METHOD__ . "(): [woocommerce-gravityforms-product-addons] Processing Add to Cart Validation #{$form_id}." );
@@ -107,13 +121,17 @@ class WC_GFPA_Cart {
 				$this->enable_gform_after_submission_hooks( $form_id );
 			}
 
-			add_filter( 'gform_pre_process_' . $form_id, array( $this, 'on_gform_pre_process' ) );
+			add_filter( 'gform_pre_process_' . $form_id, [ $this, 'on_gform_pre_process' ] );
 			add_filter( 'gform_abort_submission_with_confirmation', '__return_false', 999, 1 );
 			add_filter( 'gform_entry_is_spam', '__return_false', 999, 1 );
 
-			GFFormDisplay::process_form( $form_id );
+			GFForms::maybe_process_form();
 
-			remove_filter( 'gform_pre_process_' . $form_id, array( $this, 'on_gform_pre_process' ) );
+			remove_filter( 'gform_pre_process_' . $form_id, [ $this, 'on_gform_pre_process' ] );
+			remove_filter( 'gform_pre_send_email', [ $this, 'suppress_form_submission_notifications' ], 50 );
+
+			// Prevent GF from processing the form again.
+			remove_action( 'wp', [ 'GFForms', 'maybe_process_form' ], 9 );
 
 			$_POST['gform_old_submit'] = $_POST['gform_submit'];
 			unset( $_POST['gform_submit'] );
@@ -127,7 +145,6 @@ class WC_GFPA_Cart {
 			if ( ! $submission['is_valid'] ) {
 				$valid = false;
 			}
-
 
 			// This changing pages logic is we can determine if we should add a wc_notice for invalid submissions.  You can't add a wc_notice if the form is valid, but you are changing pages.
 			$page_to_display    = intval( $submission['page_number'] );
@@ -177,7 +194,7 @@ class WC_GFPA_Cart {
 			}
 
 			if ( ! class_exists( 'RGFormsModel' ) ) {
-				require_once( GFCommon::get_base_path() . "/forms_model.php" );
+				require_once GFCommon::get_base_path() . '/forms_model.php';
 			}
 
 			//Gravity forms generates errors and warnings.  To prevent these from conflicting with other things, we are going to disable warnings and errors.
@@ -193,29 +210,27 @@ class WC_GFPA_Cart {
 
 			$lead = $cart_item['_gravity_form_lead'];
 
-			$products = array();
 			$total    = 0;
-
 			$lead['id'] = uniqid() . time() . rand();
 
 			$products = WC_GFPA_Field_Helpers::get_product_fields( $form_meta, $lead );
-			if ( ! empty( $products["products"] ) ) {
-				foreach ( $products["products"] as $product ) {
-					$price = GFCommon::to_number( $product["price"] );
-					if ( is_array( rgar( $product, "options" ) ) ) {
-						$count = sizeof( $product["options"] );
+			if ( ! empty( $products['products'] ) ) {
+				foreach ( $products['products'] as $product ) {
+					$price = GFCommon::to_number( $product['price'] );
+					if ( is_array( rgar( $product, 'options' ) ) ) {
+						$count = sizeof( $product['options'] );
 						$index = 1;
-						foreach ( $product["options"] as $option ) {
-							$price += GFCommon::to_number( $option["price"] );
-							$class = $index == $count ? " class='lastitem'" : "";
-							$index ++;
+						foreach ( $product['options'] as $option ) {
+							$price += GFCommon::to_number( $option['price'] );
+							$class = $index == $count ? " class='lastitem'" : '';
+							++ $index;
 						}
 					}
-					$subtotal = floatval( $product["quantity"] ) * $price;
+					$subtotal = floatval( $product['quantity'] ) * $price;
 					$total    += $subtotal;
 				}
 
-				$total += floatval( $products["shipping"]["price"] );
+				$total += floatval( $products['shipping']['price'] );
 			}
 
 			$total = apply_filters( 'woocommerce_gforms_get_cart_item_total', $total, $cart_item );
@@ -246,10 +261,8 @@ class WC_GFPA_Cart {
 
 						$cart_item['quantity'] = $quantity;
 					}
-
 				}
 			}
-
 		}
 
 		return $cart_item;
@@ -276,11 +289,11 @@ class WC_GFPA_Cart {
 			error_reporting( 0 );
 
 			if ( ! class_exists( 'GFFormDisplay' ) ) {
-				require_once( GFCommon::get_base_path() . "/form_display.php" );
+				require_once GFCommon::get_base_path() . '/form_display.php';
 			}
 
 			if ( ! class_exists( 'RGFormsModel' ) ) {
-				require_once( GFCommon::get_base_path() . "/forms_model.php" );
+				require_once GFCommon::get_base_path() . '/forms_model.php';
 			}
 
 			$form_id = $gravity_form_data['id'];
@@ -289,7 +302,7 @@ class WC_GFPA_Cart {
 			$cart_item_meta['_gravity_form_hash'] = wc_gfpa()->get_form_field_hash( $form_id );
 
 			$form_meta = RGFormsModel::get_form_meta( $form_id );
-			$form_meta = gf_apply_filters( array( 'gform_pre_render', $form_id ), $form_meta );
+			$form_meta = gf_apply_filters( [ 'gform_pre_render', $form_id ], $form_meta );
 
 			GFCommon::log_debug( __METHOD__ . "(): [woocommerce-gravityforms-product-addons] Processing Add to Cart #{$form_id}." );
 
@@ -297,12 +310,12 @@ class WC_GFPA_Cart {
 				GFCommon::log_debug( __METHOD__ . "(): [woocommerce-gravityforms-product-addons] Using Lead from Validation #{$form_id}." );
 				unset( GFFormDisplay::$submission[ $form_id ]['confirmation_message'] );
 				$lead                                 = $this->lead_from_validation;
-				$cart_item_meta['_gravity_form_lead'] = array(
-					'form_id'    => $form_id,
-					'source_url' => $lead['source_url'],
-					'ip'         => $lead['ip'],
+				$cart_item_meta['_gravity_form_lead'] = [
+					'form_id'          => $form_id,
+					'source_url'       => $lead['source_url'],
+					'ip'               => $lead['ip'],
 					'original_lead_id' => $lead['id'],
-				);
+				];
 
 				GFCommon::log_debug( __METHOD__ . "(): [] Lead From Validation #{$form_id}." );
 				GFCommon::log_debug( print_r( $this->lead_from_validation, true ) );
@@ -335,7 +348,6 @@ class WC_GFPA_Cart {
 								$cart_item_meta['_gravity_form_lead'][ strval( $input['id'] ) ] = apply_filters( 'wcgf_gform_input_value', $cart_item_meta['_gravity_form_lead'][ strval( $input_id ) ], $product_id, $variation_id, $field, $input );
 							}
 						}
-
 					} else {
 						$cart_item_meta['_gravity_form_lead'][ strval( $field['id'] ) ] = apply_filters( 'wcgf_gform_field_value', $value, $product_id, $variation_id, $field );
 					}
@@ -387,6 +399,8 @@ class WC_GFPA_Cart {
 
 	public function get_item_data( $other_data, $cart_item ) {
 
+		$cart_item_meta = new WC_GFPA_Cart_Item_Meta( $cart_item, $other_data );
+
 		//Short circuit because subscriptions stores the metadata and automatically adds it back in.  If we allow this to run, we end up with duplicate cart item metadata.
 		if ( isset( $cart_item['subscription_initial_payment'] ) ) {
 			return $other_data;
@@ -402,20 +416,20 @@ class WC_GFPA_Cart {
 
 			//Ensure GFFormDisplay exists in case developers use hooks that expect it to.
 			if ( ! class_exists( 'GFFormDisplay' ) ) {
-				require_once( GFCommon::get_base_path() . "/form_display.php" );
+				require_once GFCommon::get_base_path() . '/form_display.php';
 			}
 
 			if ( ! class_exists( 'RGFormsModel' ) ) {
-				require_once( GFCommon::get_base_path() . "/forms_model.php" );
+				require_once GFCommon::get_base_path() . '/forms_model.php';
 			}
 
 			$form_meta = RGFormsModel::get_form_meta( $gravity_form_data['id'] );
-			$form_meta = gf_apply_filters( array( 'gform_pre_render', $gravity_form_data['id'] ), $form_meta );
+			$form_meta = gf_apply_filters( [ 'gform_pre_render', $gravity_form_data['id'] ], $form_meta );
 			if ( ! empty( $form_meta ) ) {
 				$lead           = $cart_item['_gravity_form_lead'];
 				$lead['id']     = 0; //Set the lead ID to 0 so that the entry is not updated, and gravity forms plugins such as populate anything don't cause errors.
 				$products       = $this->get_product_fields( $form_meta, $lead );
-				$valid_products = array();
+				$valid_products = [];
 				foreach ( $products['products'] as $id => $product ) {
 					if ( $product['quantity'] ) {
 						$valid_products[] = $id;
@@ -438,12 +452,12 @@ class WC_GFPA_Cart {
 					$arr_var = ( is_array( $value ) ) ? implode( '', $value ) : '-';
 
 					if ( $value === '0' || ( ! empty( $value ) && ! empty( $arr_var ) && $value != '[]' ) ) {
-						$display_value     = GFCommon::get_lead_field_display( $field, $value, isset( $lead["currency"] ) ? $lead["currency"] : false, false );
+						$display_value     = GFCommon::get_lead_field_display( $field, $value, isset( $lead['currency'] ) ? $lead['currency'] : false, false );
 						$price_adjustement = false;
-						$display_value     = apply_filters( "gform_entry_field_value", $display_value, $field, $lead, $form_meta );
+						$display_value     = apply_filters( 'gform_entry_field_value', $display_value, $field, $lead, $form_meta );
 
-						$display_text = GFCommon::get_lead_field_display( $field, $value, isset( $lead["currency"] ) ? $lead["currency"] : false, apply_filters( 'woocommerce_gforms_use_label_as_value', true, $value, $field, $lead, $form_meta ) );
-						$display_text = apply_filters( "woocommerce_gforms_field_display_text", $display_text, $display_value, $field, $lead, $form_meta );
+						$display_text = GFCommon::get_lead_field_display( $field, $value, isset( $lead['currency'] ) ? $lead['currency'] : false, apply_filters( 'woocommerce_gforms_use_label_as_value', true, $value, $field, $lead, $form_meta ) );
+						$display_text = apply_filters( 'woocommerce_gforms_field_display_text', $display_text, $display_value, $field, $lead, $form_meta );
 
 						if ( $field['type'] == 'product' ) {
 							$prefix        = '';
@@ -454,33 +468,103 @@ class WC_GFPA_Cart {
 							} else {
 								$hidden = false;
 							}
+
+							$cart_item_data = apply_filters(
+								'woocommerce_gforms_get_item_data',
+								[
+									'name'    => $prefix . $display_title,
+									'display' => $display_text,
+									'value'   => $display_value,
+									'hidden'  => $hidden,
+								],
+								$field,
+								$lead,
+								$form_meta
+							);
+
+							$other_data[] = $cart_item_data;
+
 						} else {
 
-							$display_title = GFCommon::get_label( $field );
+							$inputs = $field instanceof GF_Field ? $field->get_entry_inputs() : rgar( $field, 'inputs' );
 
-							$prefix         = '';
-							$hidden         = $field['type'] == 'hidden' || ( isset( $field['visibility'] ) && $field['visibility'] == 'hidden' );
-							$display_hidden = apply_filters( "woocommerce_gforms_field_is_hidden", $hidden, $display_value, $display_title, $field, $lead, $form_meta );
-							if ( $display_hidden ) {
-								$prefix = $hidden ? '_' : '';
-							}
+							if ( ! is_array( $inputs ) || empty( $inputs ) ) {
 
-							if ( ! $display_hidden && ( isset( $field->cssClass ) && strpos( $field->cssClass, 'wc-gforms-hide-from-email' ) !== false ) ) {
-								$prefix        = '_gf_email_hidden_';
-								$display_title = str_replace( '_gf_email_hidden_', '', $display_title );
-								$hidden        = true;
+								$display_title  = GFCommon::get_label( $field );
+								$prefix         = '';
+								$hidden         = $field['type'] === 'hidden' || ( isset( $field['visibility'] ) && $field['visibility'] === 'hidden' );
+								$display_hidden = apply_filters( 'woocommerce_gforms_field_is_hidden', $hidden, $display_value, $display_title, $field, $lead, $form_meta );
+								if ( $display_hidden ) {
+									$prefix = $hidden ? '_' : '';
+								}
+
+								if ( ! $display_hidden && ( isset( $field->cssClass ) && strpos( $field->cssClass, 'wc-gforms-hide-from-email' ) !== false ) ) {
+									$prefix        = '_gf_email_hidden_';
+									$display_title = str_replace( '_gf_email_hidden_', '', $display_title );
+									$hidden        = true;
+								}
+
+								$cart_item_data = apply_filters(
+									'woocommerce_gforms_get_item_data',
+									[
+										'name'    => $prefix . $display_title,
+										'display' => $display_text,
+										'value'   => $display_value,
+										'hidden'  => $hidden,
+									],
+									$field,
+									$lead,
+									$form_meta
+								);
+
+								$other_data[] = $cart_item_data;
+							} else {
+
+								$field_wrapper_label  = GFCommon::get_label( $field );
+								$field_wrapper_prefix = '';
+								$field_wrapper_hidden = $field['type'] === 'hidden' || ( isset( $field['visibility'] ) && $field['visibility'] === 'hidden' );
+
+								// Add an empty cart item data to the array so that the field wrapper is displayed.
+								$cart_item_data = apply_filters(
+									'woocommerce_gforms_get_item_data',
+									[
+										'name'    => $field_wrapper_prefix . $field_wrapper_label,
+										'display' => '',
+										'value'   => '',
+										'hidden'  => $field_wrapper_hidden,
+									],
+									$field,
+									$lead,
+									$form_meta
+								);
+
+								$other_data[] = $cart_item_data;
+
+								// Add a space to the end of the field prefix so that the cart item data is indented.
+								$field_wrapper_prefix .= ' - ';
+
+								foreach ( $inputs as $input ) {
+
+									$input_label = GFCommon::get_label( $field, $input['id'] );
+									$input_value = $value[ $input['id'] ] ?? '';
+
+									$cart_item_data = apply_filters(
+										'woocommerce_gforms_get_item_data',
+										[
+											'name'    => $field_wrapper_prefix . $input_label,
+											'display' => $input_value,
+											'value'   => $input_value,
+											'hidden'  => $field_wrapper_hidden,
+										],
+										$field,
+										$lead,
+										$form_meta
+									);
+
+									$other_data[] = $cart_item_data;
+								}
 							}
 						}
-
-						$cart_item_data = apply_filters( "woocommerce_gforms_get_item_data", array(
-							'name'    => $prefix . $display_title,
-							'display' => $display_text,
-							'value'   => $display_value,
-							'hidden'  => $hidden
-						), $field, $lead, $form_meta );
-
-
-						$other_data[] = $cart_item_data;
 					}
 				}
 			}
@@ -522,12 +606,14 @@ class WC_GFPA_Cart {
 				//slash it so that unicode doesn't get stripped out by WP add_metadata wp_unslash
 				$cart_item_lead = wp_slash( $cart_item['_gravity_form_lead'] );
 
-				$item->add_meta_data( '_gravity_forms_history', array(
+				$item->add_meta_data(
+					'_gravity_forms_history',
+					[
 						'_gravity_form_hash'          => $cart_item['_gravity_form_hash'],
 						'_gravity_form_lead'          => $cart_item_lead,
 						'_gravity_form_data'          => $cart_item['_gravity_form_data'],
-						'_gravity_form_cart_item_key' => $cart_item_key
-					)
+						'_gravity_form_cart_item_key' => $cart_item_key,
+					]
 				);
 
 				GFCommon::log_debug( "Gravity Forms Added Order Item Gravity Forms History: Order Item ID(#{$item_id})" );
@@ -540,18 +626,21 @@ class WC_GFPA_Cart {
 
 				//Ensure GFFormDisplay exists in case developers use hooks that expect it to.
 				if ( ! class_exists( 'GFFormDisplay' ) ) {
-					require_once( GFCommon::get_base_path() . "/form_display.php" );
+					require_once GFCommon::get_base_path() . '/form_display.php';
 				}
 
 				if ( ! class_exists( 'RGFormsModel' ) ) {
-					require_once( GFCommon::get_base_path() . "/forms_model.php" );
+					require_once GFCommon::get_base_path() . '/forms_model.php';
 				}
 
 				$form_meta = RGFormsModel::get_form_meta( $gravity_form_data['id'] );
-				$form_meta = gf_apply_filters( array(
-					'gform_pre_render',
-					$gravity_form_data['id']
-				), $form_meta );
+				$form_meta = gf_apply_filters(
+					[
+						'gform_pre_render',
+						$gravity_form_data['id'],
+					],
+					$form_meta
+				);
 				if ( ! empty( $form_meta ) ) {
 					$lead = $cart_item['_gravity_form_lead'];
 					//We reset the lead id to disable caching of the gravity form value by gravity forms.
@@ -559,11 +648,11 @@ class WC_GFPA_Cart {
 					$lead['id'] = uniqid() . time() . rand();
 
 					$products       = $this->get_product_fields( $form_meta, $lead );
-					$valid_products = array();
+					$valid_products = [];
 					foreach ( $products['products'] as $id => $product ) {
 						if ( ! isset( $product['quantity'] ) ) {
 
-						} elseif ( $product['quantity'] ) {
+						} else if ( $product['quantity'] ) {
 							$valid_products[] = $id;
 						}
 					}
@@ -595,7 +684,7 @@ class WC_GFPA_Cart {
 									$files      = json_decode( $dv );
 
 									if ( empty( $files ) ) {
-										$files = array( $dv );
+										$files = [ $dv ];
 									}
 
 									$display_value = '';
@@ -614,10 +703,10 @@ class WC_GFPA_Cart {
 									if ( $field['type'] == 'address' ) {
 										$display_value = implode( ', ', array_filter( $value ) );
 									} else {
-										$display_value = GFCommon::get_lead_field_display( $field, $value, isset( $lead["currency"] ) ? $lead["currency"] : false, apply_filters( 'woocommerce_gforms_use_label_as_value', true, $value, $field, $lead, $form_meta ) );
+										$display_value = GFCommon::get_lead_field_display( $field, $value, isset( $lead['currency'] ) ? $lead['currency'] : false, apply_filters( 'woocommerce_gforms_use_label_as_value', true, $value, $field, $lead, $form_meta ) );
 									}
 
-									$display_value = apply_filters( "gform_entry_field_value", $display_value, $field, $lead, $form_meta );
+									$display_value = apply_filters( 'gform_entry_field_value', $display_value, $field, $lead, $form_meta );
 
 									if ( strpos( $display_value, '<img' ) !== false ) {
 										$strip_html = false;
@@ -625,9 +714,8 @@ class WC_GFPA_Cart {
 								}
 
 								$display_title = GFCommon::get_label( $field );
-								$display_title = apply_filters( "woocommerce_gforms_order_meta_title", $display_title, $field, $lead, $form_meta, $item_id, $cart_item );
-								$display_value = apply_filters( "woocommerce_gforms_order_meta_value", $display_value, $field, $lead, $form_meta, $item_id, $cart_item );
-
+								$display_title = apply_filters( 'woocommerce_gforms_order_meta_title', $display_title, $field, $lead, $form_meta, $item_id, $cart_item );
+								$display_value = apply_filters( 'woocommerce_gforms_order_meta_value', $display_value, $field, $lead, $form_meta, $item_id, $cart_item );
 
 								if ( apply_filters( 'woocommerce_gforms_strip_meta_html', $strip_html, $display_value, $field, $lead, $form_meta, $item_id, $cart_item ) ) {
 									if ( strstr( $display_value, '<li>' ) ) {
@@ -640,12 +728,12 @@ class WC_GFPA_Cart {
 									$display_value = strip_tags( wp_kses( $display_value, '' ) );
 								}
 
-								$display_text  = GFCommon::get_lead_field_display( $field, $value, isset( $lead["currency"] ) ? $lead["currency"] : false, false );
-								$display_value = apply_filters( "woocommerce_gforms_field_display_text", $display_value, $display_text, $field, $lead, $form_meta );
+								$display_text  = GFCommon::get_lead_field_display( $field, $value, isset( $lead['currency'] ) ? $lead['currency'] : false, false );
+								$display_value = apply_filters( 'woocommerce_gforms_field_display_text', $display_value, $display_text, $field, $lead, $form_meta );
 
 								$prefix         = '';
 								$hidden         = $field['type'] == 'hidden' || ( isset( $field['visibility'] ) && $field['visibility'] == 'hidden' );
-								$display_hidden = apply_filters( "woocommerce_gforms_field_is_hidden", $hidden, $display_value, $display_title, $field, $lead, $form_meta );
+								$display_hidden = apply_filters( 'woocommerce_gforms_field_is_hidden', $hidden, $display_value, $display_title, $field, $lead, $form_meta );
 								if ( $display_hidden ) {
 									$prefix = $hidden ? '_' : '';
 								}
@@ -659,7 +747,8 @@ class WC_GFPA_Cart {
 									//Set the prefix to hidden if the hidden class is present.
 									$prefix        = strpos( $field->cssClass, 'wc-gforms-hide-from-email' ) !== false ? '_' : '';
 									$display_title = GFCommon::get_label( $field );
-									$display_value = str_replace( $display_title . ',', '', $display_value );;
+									$display_value = str_replace( $display_title . ',', '', $display_value );
+
 								}
 
 								if ( empty( $prefix ) && empty( $display_title ) ) {
@@ -668,18 +757,18 @@ class WC_GFPA_Cart {
 								$value_debug_string = $prefix . $display_title . ' - Value:' . $display_value;
 								GFCommon::log_debug( "Gravity Forms Adding Order Item Meta:(#{$value_debug_string})" );
 
-								$order_item_meta = array(
+								$order_item_meta = [
 									'name'  => $prefix . $display_title,
-									'value' => $display_value
-								);
+									'value' => $display_value,
+								];
 
-								$order_item_meta = apply_filters( "woocommerce_gforms_order_item_meta", $order_item_meta, $field, $lead, $form_meta, $item_id, $cart_item );
+								$order_item_meta = apply_filters( 'woocommerce_gforms_order_item_meta', $order_item_meta, $field, $lead, $form_meta, $item_id, $cart_item );
 
 								if ( $order_item_meta ) {
 									$item->add_meta_data( $order_item_meta['name'], $order_item_meta['value'] );
 									GFCommon::log_debug( "Gravity Forms Added Order Item Meta:({$order_item_meta['name']} - {$order_item_meta['value']})" );
 								} else {
-									GFCommon::log_debug( "(ERROR) Gravity Forms Did Not Add Order Item Meta, It was empty after the filter" );
+									GFCommon::log_debug( '(ERROR) Gravity Forms Did Not Add Order Item Meta, It was empty after the filter' );
 								}
 							} catch ( Exception $e ) {
 								$e_debug_string = $e->getMessage();
@@ -703,7 +792,7 @@ class WC_GFPA_Cart {
 
 	public function on_get_order_again_cart_item_data( $data, $item, $order ) {
 		//disable validation
-		remove_filter( 'woocommerce_add_to_cart_validation', array( $this, 'add_to_cart_validation' ), 99, 3 );
+		remove_filter( 'woocommerce_add_to_cart_validation', [ $this, 'add_to_cart_validation' ], 99, 3 );
 
 		return $data;
 	}
@@ -740,7 +829,6 @@ class WC_GFPA_Cart {
 		$lead_notes_table  = GFFormsModel::get_lead_notes_table_name();
 		$lead_detail_table = GFFormsModel::get_lead_details_table_name();
 
-
 		//Delete from lead details
 		$sql = $wpdb->prepare( "DELETE FROM $lead_detail_table WHERE lead_id=%d", $lead_id );
 		$wpdb->query( $sql );
@@ -760,32 +848,59 @@ class WC_GFPA_Cart {
 
 	private function disable_hooks( $form_id ) {
 		//MUST disable notifications manually.
-		add_filter( 'gform_disable_notification', array( $this, 'disable_notifications' ), 999, 3 );
+		/*
+		add_filter( 'gform_disable_notification', [ $this, 'disable_notifications' ], 999, 3 );
 
-		add_filter( 'gform_disable_user_notification', array( $this, 'disable_notifications' ), 999, 3 );
-		add_filter( 'gform_disable_user_notification_' . $form_id, array(
-			$this,
-			'disable_notifications'
-		), 999, 3 );
+		add_filter( 'gform_disable_user_notification', [ $this, 'disable_notifications' ], 999, 3 );
+		add_filter(
+			'gform_disable_user_notification_' . $form_id,
+			[
+				$this,
+				'disable_notifications',
+			],
+			999,
+			3
+		);
 
-		add_filter( 'gform_disable_admin_notification' . $form_id, array(
-			$this,
-			'disable_notifications'
-		), 10, 3 );
+		add_filter(
+			'gform_disable_admin_notification' . $form_id,
+			[
+				$this,
+				'disable_notifications',
+			],
+			10,
+			3
+		);
 
+		add_filter(
+			'gform_disable_admin_notification_' . $form_id,
+			[
+				$this,
+				'disable_notifications',
+			],
+			10,
+			3
+		);
 
-		add_filter( 'gform_disable_admin_notification_' . $form_id, array(
-			$this,
-			'disable_notifications'
-		), 10, 3 );
+		add_filter( 'gform_disable_notification_' . $form_id, [ $this, 'disable_notifications' ], 999, 3 );
+		*/
 
+		add_filter( 'gform_confirmation_' . $form_id, [ $this, 'disable_confirmation' ], 998, 4 );
+		add_filter( 'gform_pre_send_email', [ $this, 'suppress_form_submission_notifications' ], 50, 4 );
+	}
 
-		add_filter( 'gform_disable_notification_' . $form_id, array( $this, 'disable_notifications' ), 999, 3 );
+	/**
+	 * Suppress the 'form_submission' event type for notifications when forms are submitted by adding an item to the cart.
+	 */
+	public function suppress_form_submission_notifications( $email, $message_format, $notification, $entry ) {
+		if ( $notification['event'] !== 'form_submission' ) {
+			return $email;
+		}
 
-		add_filter( "gform_confirmation_" . $form_id, array( $this, "disable_confirmation" ), 998, 4 );
+		wc_gfpa()->log_debug( __METHOD__ . "(): Preventing 'form_submission' notification from sending due to the entry being created while adding an item to the cart." );
 
-		$delete_cart_entries = isset( $gravity_form_data['keep_cart_entries'] ) && $gravity_form_data['keep_cart_entries'] == 'yes' ? false : true;
-
+		$email['abort_email'] = true;
+		return $email;
 	}
 
 	private function disable_gform_after_submission_hooks( $form_id ) {
@@ -818,7 +933,6 @@ class WC_GFPA_Cart {
 				unset( $wp_filter[ $tag ] );
 			}
 		}
-
 	}
 
 	private function enable_gform_after_submission_hooks( $form_id ) {
@@ -869,10 +983,10 @@ class WC_GFPA_Cart {
 				if ( isset( $field['type'] ) && $field['type'] == 'captcha' ) {
 					$captcha_id = $index;
 
-					$this->removed_captcha = array(
+					$this->removed_captcha = [
 						'index' => $index,
-						'field' => $field
-					);
+						'field' => $field,
+					];
 
 				}
 			}
@@ -884,5 +998,4 @@ class WC_GFPA_Cart {
 
 		return $form;
 	}
-
 }

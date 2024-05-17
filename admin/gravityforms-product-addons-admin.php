@@ -12,38 +12,59 @@ class WC_GFPA_Admin_Controller {
 
 	private function __construct() {
 
-		add_action( 'admin_enqueue_scripts', [ $this, 'on_admin_enqueue_scripts' ], 100 );
-		add_action( 'admin_notices', [ $this, 'admin_install_notices' ] );
+		add_action( 'admin_enqueue_scripts', array( $this, 'on_admin_enqueue_scripts' ), 100 );
+		add_action( 'admin_notices', array( $this, 'admin_install_notices' ) );
 
-		add_action( 'woocommerce_process_product_meta', [ $this, 'process_meta_box' ], 1, 2 );
-		add_action( 'admin_notices', [ $this, 'on_admin_notices' ] );
+		add_action( 'woocommerce_process_product_meta', array( $this, 'process_meta_box' ), 1, 2 );
+		add_action( 'admin_notices', array( $this, 'on_admin_notices' ) );
 
-		add_action( 'woocommerce_product_write_panel_tabs', [ $this, 'add_tab' ] );
-		add_action( 'woocommerce_product_data_panels', [ $this, 'render_panel' ] );
-		add_action( 'woocommerce_process_product_meta', [ $this, 'process_meta_box' ], 1, 2 );
+		add_action( 'woocommerce_product_write_panel_tabs', array( $this, 'add_tab' ) );
+		add_action( 'woocommerce_product_data_panels', array( $this, 'render_panel' ) );
+		add_action( 'woocommerce_process_product_meta', array( $this, 'process_meta_box' ), 1, 2 );
 
-		add_action( 'wp_ajax_wc_gravityforms_get_form_data', [ $this, 'on_wc_gravityforms_get_form_data' ] );
+		add_action( 'wp_ajax_wc_gravityforms_get_form_data', array( $this, 'on_wc_gravityforms_get_form_data' ) );
 	}
 
 	public function on_admin_enqueue_scripts() {
 		wp_enqueue_style( 'woocommerce_gravityforms_product_addons_css', plugins_url( basename( dirname( __DIR__ ) ) ) . '/assets/css/admin.css' );
 
-		$params = [
+		$params = array(
 			'nonce'                 => wp_create_nonce( 'wc_gravityforms_get_products' ),
 			'text_edit_form'        => __( 'Edit ', 'wc_gf_addons' ),
 			'url_edit_form'         => sprintf( '%s/admin.php?page=gf_edit_forms&id=FORMID', get_admin_url() ),
 			'duplicate_form_notice' => __( 'The singular and the bulk form can not be the same form. Make a duplicate of your singular form if need be. ', 'wc_gf_addons' ),
 			'product_id'            => get_the_ID(),
-		];
+		);
+
+		// Add labels to the params
+		$params['labels'] = array(
+			'label_subtotal'                 => __( 'Subtotal', 'wc_gf_addons' ),
+			'label_options'                  => __( 'Options', 'wc_gf_addons' ),
+			'label_total'                    => __( 'Total', 'wc_gf_addons' ),
+		);
+
+        $params['merge_tags']  = WC_GFPA_Merge_Tags::instance()->get_merge_tags();
+
+		// Add filter to modify the params
+		$params = apply_filters( 'woocommerce_gravityforms_product_addons_js_params', $params );
 
 		wp_enqueue_script(
 			'woocommerce_gravityforms_product_addons_js',
 			plugins_url( basename( dirname( __DIR__ ) ) ) . '/assets/js/admin.js',
-			[
+			array(
 				'jquery',
 				'jquery-blockui',
-			],
-			wc_gfpa()->assets_version
+			),
+			wc_gfpa()->assets_version,
+			true
+		);
+
+		wp_enqueue_script(
+			'wc-gfpa-admin-js',
+			plugins_url( basename( dirname( __DIR__ ) ) ) . '/assets/js/gravityforms-product-addons-admin.js',
+			array( 'jquery', 'jquery-blockui', 'woocommerce_gravityforms_product_addons_js' ),
+			wc_gfpa()->assets_version,
+			true
 		);
 
 		wp_localize_script( 'woocommerce_gravityforms_product_addons_js', 'wc_gf_addons', $params );
@@ -53,15 +74,15 @@ class WC_GFPA_Admin_Controller {
 	public function admin_install_notices() {
 		if ( ! class_exists( 'RGForms' ) ) {
 			?>
-            <div id="message" class="updated woocommerce-error wc-connect">
-                <div class="squeezer">
-                    <h4><?php _e( '<strong>Gravity Forms Not Found</strong> &#8211; The Gravity Forms Plugin is required to build and manage the forms for your products.', 'wc_gf_addons' ); ?></h4>
-                    <p class="submit">
-                        <a href="https://www.gravityforms.com/"
-                           class="button-primary"><?php _e( 'Get Gravity Forms', 'wc_gf_addons' ); ?></a>
-                    </p>
-                </div>
-            </div>
+			<div id="message" class="updated woocommerce-error wc-connect">
+				<div class="squeezer">
+					<h4><?php _e( '<strong>Gravity Forms Not Found</strong> &#8211; The Gravity Forms Plugin is required to build and manage the forms for your products.', 'wc_gf_addons' ); ?></h4>
+					<p class="submit">
+						<a href="https://www.gravityforms.com/"
+							class="button-primary"><?php _e( 'Get Gravity Forms', 'wc_gf_addons' ); ?></a>
+					</p>
+				</div>
+			</div>
 			<?php
 		}
 	}
@@ -71,11 +92,11 @@ class WC_GFPA_Admin_Controller {
 		if ( is_admin() ) {
 			if ( is_plugin_active( 'gravity-forms-duplicate-prevention/gravityforms-duplicateprevention.php' ) || is_plugin_active_for_network( 'gravity-forms-duplicate-prevention/gravityforms-duplicateprevention.php' ) ) {
 				?>
-                <div id="message" class="error woocommerce-error wc-connect">
-                    <div class="squeezer">
-                        <h4><?php printf( __( '<strong>Gravity Forms Duplicate Prevention Active</strong></h4><p>The <strong>Gravity Forms Product Addon Extension</strong> can not function properly if this additional plugin is active.  Please <a href="%s">disable</a> it for proper functionality of the extension.</p>', 'wc_gf_addons' ), $this->na_action_link( 'gravity-forms-duplicate-prevention/gravityforms-duplicateprevention.php', 'deactivate' ) ); ?></h4>
-                    </div>
-                </div>
+				<div id="message" class="error woocommerce-error wc-connect">
+					<div class="squeezer">
+						<h4><?php printf( __( '<strong>Gravity Forms Duplicate Prevention Active</strong></h4><p>The <strong>Gravity Forms Product Addon Extension</strong> can not function properly if this additional plugin is active.  Please <a href="%s">disable</a> it for proper functionality of the extension.</p>', 'wc_gf_addons' ), $this->na_action_link( 'gravity-forms-duplicate-prevention/gravityforms-duplicateprevention.php', 'deactivate' ) ); ?></h4>
+					</div>
+				</div>
 				<?php
 			}
 		}
@@ -103,8 +124,8 @@ class WC_GFPA_Admin_Controller {
 
 	public function add_tab() {
 		?>
-        <li class="gravityforms_addons_tab gravityforms_addons">
-            <a href="#gravityforms_addons_data"><span><?php _e( 'Gravity Forms', 'wc_gf_addons' ); ?></span></a></li>
+		<li class="gravityforms_addons_tab gravityforms_addons">
+			<a href="#gravityforms_addons_data"><span><?php _e( 'Gravity Forms', 'wc_gf_addons' ); ?></span></a></li>
 		<?php
 	}
 
@@ -126,7 +147,7 @@ class WC_GFPA_Admin_Controller {
 
 			$product = wc_get_product( $post );
 
-			$gravity_form_data = [
+			$gravity_form_data = array(
 				'id'                              => $_POST['gravityform-id'],
 				'bulk_id'                         => isset( $_POST['gravityform-bulk-id'] ) ? $_POST['gravityform-bulk-id'] : 0,
 				'display_title'                   => isset( $_POST['gravityform-display_title'] ) ? true : false,
@@ -155,7 +176,7 @@ class WC_GFPA_Admin_Controller {
 				'structured_data_low_price'       => isset( $_POST['gravityform-structured_data_low_price'] ) ? $_POST['gravityform-structured_data_low_price'] : '',
 				'structured_data_high_price'      => isset( $_POST['gravityform-structured_data_high_price'] ) ? $_POST['gravityform-structured_data_high_price'] : '',
 				'structured_data_override_type'   => isset( $_POST['gravityform-structured_data_override_type'] ) ? $_POST['gravityform-structured_data_override_type'] : 'append',
-			];
+			);
 
 			$gravity_form_data = apply_filters( 'woocommerce_gravityforms_before_save_metadata', $gravity_form_data, $product->get_id() );
 			$product->update_meta_data( '_gravity_form_data', $gravity_form_data );
@@ -175,10 +196,10 @@ class WC_GFPA_Admin_Controller {
 		$form_id = isset( $_POST['form_id'] ) ? $_POST['form_id'] : 0;
 		if ( empty( $form_id ) ) {
 			wp_send_json_error(
-				[
+				array(
 					'status'  => 'error',
 					'message' => __( 'No Form ID', 'wc_gf_addons' ),
-				]
+				)
 			);
 			die();
 		}
@@ -196,10 +217,10 @@ class WC_GFPA_Admin_Controller {
 		}
 
 		$form   = GFAPI::get_form( $form_id );
-		$fields = GFAPI::get_fields_by_type( $form, [ 'quantity', 'number', 'singleproduct' ], false );
+		$fields = GFAPI::get_fields_by_type( $form, array( 'quantity', 'number', 'singleproduct' ), false );
 
 		if ( $fields ) {
-			$options = [];
+			$options = array();
 			foreach ( $fields as $field ) {
 				if ( $field['disableQuantity'] !== true ) {
 					$options[ $field['id'] ] = $field['label'];
@@ -208,13 +229,13 @@ class WC_GFPA_Admin_Controller {
 
 			ob_start();
 			woocommerce_wp_select(
-				[
+				array(
 					'id'          => 'gravityform-cart_quantity_field',
 					'label'       => __( 'Quantity Field', 'wc_gf_addons' ),
 					'value'       => $selected_field,
 					'options'     => $options,
 					'description' => __( 'A field to use to control cart item quantity.', 'wc_gf_addons' ),
-				]
+				)
 			);
 
 			$markup = ob_get_clean();
@@ -232,11 +253,11 @@ class WC_GFPA_Admin_Controller {
 		$markup .= '</select>';
 		*/
 
-		$response = [
+		$response = array(
 			'status'  => 'success',
 			'message' => '',
 			'markup'  => $markup,
-		];
+		);
 
 		wp_send_json_success( $response );
 		die();

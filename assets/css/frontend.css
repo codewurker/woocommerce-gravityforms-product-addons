@@ -2,3 +2,43 @@
 .single-product div.product form.cart .button.gform_button_select_files {
     float:none;
 }
+
+form.cart .hidden-total {
+    display: none !important;
+}
+
+/* Product Totals */
+form.cart .product_totals {
+    margin: 20px 0 40px 0;
+    padding: 20px 0 0 0;
+    border-top: 1px solid #eee;
+    border-bottom: 1px solid #eee;
+    overflow: hidden;
+}
+
+form.cart .product_totals ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+form.cart .product_totals ul li {
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+}
+
+form.cart .product_totals ul li.wcgfpa_grand_total {
+    justify-content: flex-end;
+    border-top: 1px solid #eee;
+    padding: 10px 0;
+    margin-top: 20px;
+}
+
+form.cart .product_totals ul li.wcgfpa_grand_total p.price {
+    margin: 0;
+}
+
+
+
