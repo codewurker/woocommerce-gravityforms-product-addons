@@ -19,11 +19,18 @@ class GravityFormsProductAddonsAdmin {
     }
 
     observeGFormAvailability() {
+        let mutationCount = 0;
+        const maxMutations = 100; // Set a limit to avoid infinite loop
+
         const observer = new MutationObserver((mutations, obs) => {
+            mutationCount += mutations.length;
+
             if (window.gform) {
-                console.log('gform is now available');
-                this.init();
                 obs.disconnect(); // Disconnect observer once gform is available
+                this.init();
+            } else if (mutationCount > maxMutations) {
+                obs.disconnect(); // Disconnect observer after maxMutations to avoid infinite loop
+                console.warn('Stopped observing after reaching the mutation limit.');
             }
         });
 
@@ -58,8 +65,6 @@ class GravityFormsProductAddonsAdmin {
                     return true;
                 }
             });
-
-            console.log('Filtered Tags: ', filtered_tags);
 
             mergeTags[key] = {
                 label: label,

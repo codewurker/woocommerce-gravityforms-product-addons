@@ -2,11 +2,11 @@
 # This file is distributed under the GNU General Public License v3.0.
 msgid ""
 msgstr ""
-"Project-Id-Version: WooCommerce Gravity Forms Product Add-Ons 3.6.0\n"
+"Project-Id-Version: WooCommerce Gravity Forms Product Add-Ons 3.6.1\n"
 "Report-Msgid-Bugs-To: "
 "https://wordpress.org/support/plugin/woocommerce-gravityforms-product-"
 "addons\n"
-"POT-Creation-Date: 2024-05-15 10:49:50+00:00\n"
+"POT-Creation-Date: 2024-05-24 12:24:29+00:00\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -66,8 +66,8 @@ msgstr ""
 msgid "Total"
 msgstr ""
 
-#: admin/gravityforms-product-addons-admin.php:79
-#: dist/woocommerce-gravityforms-product-addons/admin/gravityforms-product-addons-admin.php:79
+#: admin/gravityforms-product-addons-admin.php:82
+#: dist/woocommerce-gravityforms-product-addons/admin/gravityforms-product-addons-admin.php:82
 #: dist/woocommerce-gravityforms-product-addons/gravityforms-product-addons.php:91
 #: gravityforms-product-addons.php:91
 msgid ""
@@ -75,15 +75,15 @@ msgid ""
 "is required to build and manage the forms for your products."
 msgstr ""
 
-#: admin/gravityforms-product-addons-admin.php:82
-#: dist/woocommerce-gravityforms-product-addons/admin/gravityforms-product-addons-admin.php:82
+#: admin/gravityforms-product-addons-admin.php:85
+#: dist/woocommerce-gravityforms-product-addons/admin/gravityforms-product-addons-admin.php:85
 #: dist/woocommerce-gravityforms-product-addons/gravityforms-product-addons.php:94
 #: gravityforms-product-addons.php:94
 msgid "Get Gravity Forms"
 msgstr ""
 
-#: admin/gravityforms-product-addons-admin.php:97
-#: dist/woocommerce-gravityforms-product-addons/admin/gravityforms-product-addons-admin.php:97
+#: admin/gravityforms-product-addons-admin.php:100
+#: dist/woocommerce-gravityforms-product-addons/admin/gravityforms-product-addons-admin.php:100
 msgid ""
 "<strong>Gravity Forms Duplicate Prevention Active</strong></h4><p>The "
 "<strong>Gravity Forms Product Addon Extension</strong> can not function "
@@ -91,32 +91,32 @@ msgid ""
 "href=\"%s\">disable</a> it for proper functionality of the extension.</p>"
 msgstr ""
 
-#: admin/gravityforms-product-addons-admin.php:128
-#: dist/woocommerce-gravityforms-product-addons/admin/gravityforms-product-addons-admin.php:128
+#: admin/gravityforms-product-addons-admin.php:131
+#: dist/woocommerce-gravityforms-product-addons/admin/gravityforms-product-addons-admin.php:131
 msgid "Gravity Forms"
 msgstr ""
 
-#: admin/gravityforms-product-addons-admin.php:201
-#: dist/woocommerce-gravityforms-product-addons/admin/gravityforms-product-addons-admin.php:201
+#: admin/gravityforms-product-addons-admin.php:204
+#: dist/woocommerce-gravityforms-product-addons/admin/gravityforms-product-addons-admin.php:204
 msgid "No Form ID"
 msgstr ""
 
-#: admin/gravityforms-product-addons-admin.php:234
+#: admin/gravityforms-product-addons-admin.php:237
 #: admin/views/html-gravityforms-addons-wc-metabox.php:410
-#: dist/woocommerce-gravityforms-product-addons/admin/gravityforms-product-addons-admin.php:234
+#: dist/woocommerce-gravityforms-product-addons/admin/gravityforms-product-addons-admin.php:237
 #: dist/woocommerce-gravityforms-product-addons/admin/views/html-gravityforms-addons-wc-metabox.php:410
 msgid "Quantity Field"
 msgstr ""
 
-#: admin/gravityforms-product-addons-admin.php:237
+#: admin/gravityforms-product-addons-admin.php:240
 #: admin/views/html-gravityforms-addons-wc-metabox.php:413
-#: dist/woocommerce-gravityforms-product-addons/admin/gravityforms-product-addons-admin.php:237
+#: dist/woocommerce-gravityforms-product-addons/admin/gravityforms-product-addons-admin.php:240
 #: dist/woocommerce-gravityforms-product-addons/admin/views/html-gravityforms-addons-wc-metabox.php:413
 msgid "A field to use to control cart item quantity."
 msgstr ""
 
-#: admin/gravityforms-product-addons-admin.php:243
-#: dist/woocommerce-gravityforms-product-addons/admin/gravityforms-product-addons-admin.php:243
+#: admin/gravityforms-product-addons-admin.php:246
+#: dist/woocommerce-gravityforms-product-addons/admin/gravityforms-product-addons-admin.php:246
 msgid "No suitable quantity fields found."
 msgstr ""
 

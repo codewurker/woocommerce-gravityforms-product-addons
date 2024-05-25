@@ -1,5 +1,10 @@
 *** Gravity Forms Product Add-Ons Changelog ***
-2024.01.27 - version 3.6.0
+2024.05.24 - version 3.6.1
+    * Fix: Fix issue with the mutation observer causing an infinate loop on some sites where gform is not available.
+    * Fix: Only enqueue the admin scripts on a Gravity Forms admin page.
+    * WC and WP Compatibility Tags.
+
+2024.05.15 - version 3.6.0
     * New: Integration with WooCommerce Bookings. The integration is basic, but allows for booking product costs to be correctly displayed in the totals section on the product page.
     * New: Updated styles to modernize and cleanup the look of the totals section.
     * New: Include custom merge tags for WooCommerce order and order item data.

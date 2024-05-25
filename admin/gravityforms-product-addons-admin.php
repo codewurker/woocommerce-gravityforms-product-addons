@@ -25,7 +25,7 @@ class WC_GFPA_Admin_Controller {
 		add_action( 'wp_ajax_wc_gravityforms_get_form_data', array( $this, 'on_wc_gravityforms_get_form_data' ) );
 	}
 
-	public function on_admin_enqueue_scripts() {
+	public function on_admin_enqueue_scripts($hook) {
 		wp_enqueue_style( 'woocommerce_gravityforms_product_addons_css', plugins_url( basename( dirname( __DIR__ ) ) ) . '/assets/css/admin.css' );
 
 		$params = array(
@@ -59,13 +59,16 @@ class WC_GFPA_Admin_Controller {
 			true
 		);
 
-		wp_enqueue_script(
-			'wc-gfpa-admin-js',
-			plugins_url( basename( dirname( __DIR__ ) ) ) . '/assets/js/gravityforms-product-addons-admin.js',
-			array( 'jquery', 'jquery-blockui', 'woocommerce_gravityforms_product_addons_js' ),
-			wc_gfpa()->assets_version,
-			true
-		);
+
+		if ($hook === 'forms_page_gf_edit_forms' || $hook === 'toplevel_page_gf_edit_forms') {
+            wp_enqueue_script(
+                'wc-gfpa-admin-js',
+                plugins_url( basename( dirname( __DIR__ ) ) ) . '/assets/js/gravityforms-product-addons-admin.js',
+                array( 'jquery', 'jquery-blockui', 'woocommerce_gravityforms_product_addons_js' ),
+                wc_gfpa()->assets_version,
+                true
+            );
+        }
 
 		wp_localize_script( 'woocommerce_gravityforms_product_addons_js', 'wc_gf_addons', $params );
 	}
