@@ -1,4 +1,7 @@
 *** Gravity Forms Product Add-Ons Changelog ***
+2024.06.04 - version 3.6.2
+    * Update: Update the display for checkbox type fields (regular and product options) to display better in checkout blocks.
+
 2024.05.24 - version 3.6.1
     * Fix: Fix issue with the mutation observer causing an infinate loop on some sites where gform is not available.
     * Fix: Only enqueue the admin scripts on a Gravity Forms admin page.
