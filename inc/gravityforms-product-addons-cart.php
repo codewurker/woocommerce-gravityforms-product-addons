@@ -27,6 +27,7 @@ class WC_GFPA_Cart {
 	private function __construct() {
 		// Filters for cart actions
 
+		add_filter( 'woocommerce_cart_id', array( $this, 'cart_id' ), 10, 5 );
 		add_filter( 'woocommerce_add_cart_item_data', array( $this, 'add_cart_item_data' ), 10, 3 );
 		add_filter( 'woocommerce_get_cart_item_from_session', array( $this, 'get_cart_item_from_session' ), 10, 2 );
 		add_filter( 'woocommerce_get_item_data', array( $this, 'get_item_data' ), 10, 2 );
@@ -45,6 +46,57 @@ class WC_GFPA_Cart {
 			10,
 			3
 		);
+	}
+
+	/**
+	 * Remove fields that cause the cart item key to be different even though the actual submitted data is the same.
+	 * This is necessary because the cart item key is used to determine if the item is already in the cart.
+	 */
+	public function cart_id( $cart_id, $product_id, $variation_id, $variation, $cart_item_data ): string {
+
+		if ( isset( $cart_item_data['_gravity_form_data'] ) ) {
+			unset( $cart_item_data['_gravity_form_data'] );
+		}
+
+		if ( isset( $cart_item_data['_gravity_form_lead'] ) ) {
+			unset( $cart_item_data['_gravity_form_lead']['id'] );
+			unset( $cart_item_data['_gravity_form_lead']['source_url'] );
+			unset( $cart_item_data['_gravity_form_lead']['ip'] );
+			unset( $cart_item_data['_gravity_form_lead']['original_lead_id'] );
+		}
+
+		if ( isset( $cart_item_data['_gravity_form_hash'] ) ) {
+			unset( $cart_item_data['_gravity_form_hash'] );
+		}
+
+		$id_parts = array( $product_id );
+
+		if ( $variation_id && 0 !== $variation_id ) {
+			$id_parts[] = $variation_id;
+		}
+
+		if ( is_array( $variation ) && ! empty( $variation ) ) {
+			$variation_key = '';
+			foreach ( $variation as $key => $value ) {
+				$variation_key .= trim( $key ) . trim( $value );
+			}
+			$id_parts[] = $variation_key;
+		}
+
+		if ( is_array( $cart_item_data ) && ! empty( $cart_item_data ) ) {
+			$cart_item_data_key = '';
+			foreach ( $cart_item_data as $key => $value ) {
+				if ( is_array( $value ) || is_object( $value ) ) {
+					$value = http_build_query( $value );
+				}
+				$cart_item_data_key .= trim( $key ) . trim( $value );
+
+			}
+			$id_parts[] = $cart_item_data_key;
+		}
+
+		$cart_id = md5( implode( '_', $id_parts ) );
+		return $cart_id;
 	}
 
 	/**
@@ -473,12 +525,12 @@ class WC_GFPA_Cart {
 						// Controls the use_text option for the field
 						$use_label_as_value = apply_filters( 'woocommerce_gforms_use_label_as_value', true, $value, $field, $lead, $form_meta );
 
-						$display_value    = GFCommon::get_lead_field_display( $field, $value, $currency, $use_label_as_value );
-						$price_adjustment = false;
+						$display_value    = GFCommon::get_lead_field_display( $field, $value, $currency, false );
 						$display_value    = apply_filters( 'gform_entry_field_value', $display_value, $field, $lead, $form_meta );
 
-						$display_text = GFCommon::get_lead_field_display( $field, $value, $currency, );
+						$display_text = GFCommon::get_lead_field_display( $field, $value, $currency, $use_label_as_value );
 						$display_text = apply_filters( 'woocommerce_gforms_field_display_text', $display_text, $display_value, $field, $lead, $form_meta );
+						$display_text = apply_filters( 'woocommerce_gforms_field_display_text_' . $field_id, $display_text, $display_value, $field, $lead, $form_meta );
 
 						if ( $field['type'] == 'product' ) {
 							$prefix        = '';
@@ -540,11 +592,10 @@ class WC_GFPA_Cart {
 							} else {
 
 								$_a_value         = RGFormsModel::get_lead_field_value( $lead, $field );
-								$_a_display_value = $field->get_value_entry_detail( $_a_value, $currency, $use_label_as_value, 'text');
+								$_a_display_value = $field->get_value_entry_detail( $_a_value, $currency, $use_label_as_value, 'text' );
 								if ( ( is_string( $_a_value ) && rgblank( $_a_value ) ) || ( is_array( $_a_value ) && empty( $_a_value ) ) || ( $_a_value === '[]' ) ) {
 									continue;
 								}
-
 
 								$value         = RGFormsModel::get_lead_field_value( $lead, $field );
 								$display_value = $field->get_value_entry_detail( $value );
@@ -606,12 +657,12 @@ class WC_GFPA_Cart {
 
 										$cart_item_data = apply_filters(
 											'woocommerce_gforms_get_item_data',
-											[
+											array(
 												'name'    => $field_wrapper_prefix . $input_label,
 												'display' => $input_value_for_cart,
 												'value'   => $input_value,
 												'hidden'  => $field_wrapper_hidden,
-											],
+											),
 											$field,
 											$lead,
 											$form_meta

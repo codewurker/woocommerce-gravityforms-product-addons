@@ -163,7 +163,7 @@ class WC_GFPA_Reorder {
 				$data['_gravity_form_data'] = $gravity_form_data;
 				$data['_gravity_form_hash'] = $form_fields_hash;
 
-				if ( $reorder_processing_type == 'resubmit' ) {
+				if ( $reorder_processing_type === 'resubmit' ) {
 
 					try {
 						// Disable notifications, confirmations and other processing.
@@ -196,7 +196,7 @@ class WC_GFPA_Reorder {
 						$entry = $previous_entry_data;
 					}
 
-				} else if ( $reorder_processing_type == 'revalidate' ) {
+				} else if ( $reorder_processing_type === 'revalidate' ) {
 
 					try {
 						// Revalidate the entry to get make sure it is still valid.

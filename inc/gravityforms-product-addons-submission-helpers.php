@@ -23,7 +23,8 @@ class WC_GFPA_Submission_Helpers {
 
 		//Find any upload fields in the form.
 		$upload_fields = array_filter( $form['fields'], function ( $field ) {
-			return $field->type === 'fileupload';
+			// $field->type === 'fileupload';
+			//TODO: See if we can enable file uploads for revalidation. It's not working as of 3.6.2
 		} );
 
 		//If there are any upload_fields, hydrate the globals. This is necessary for the file upload field to work and validate properly.
@@ -136,7 +137,7 @@ class WC_GFPA_Submission_Helpers {
 			'signature',
 			'creditcard',
 			'password',
-			// 'fileupload',
+			'fileupload',
 			'captcha',
 		] );
 

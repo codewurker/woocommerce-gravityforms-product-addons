@@ -556,8 +556,10 @@ class WC_GFPA_Main {
 			}
 		}
 
+		$working_data['reorder_processing'] = $current_data['reorder_processing'] ?? 'revalidate';
+
 		// Return the data, filtered.
-		return apply_filters( 'woocommerce_gforms_get_product_reorder_form_data', $working_data, $post_id );
+		return apply_filters( 'woocommerce_gforms_get_product_reorder_form_data', $working_data, $current_data, $post_id );
 	}
 
 	public function has_gravity_form( int $product_id ): bool {
@@ -595,7 +597,7 @@ class WC_GFPA_Main {
 		$data = wp_parse_args(
 			$data,
 			array(
-				'reorder_processing'       => 'resubmit', // 'resubmit', 'revalidate', 'none'
+				'reorder_processing'       => 'revalidate', // 'resubmit', 'revalidate', 'none'
 				'reorder_hydrate_defaults' => 'yes',
 				'use_ajax'                 => 'no',
 				'is_ajax'                  => false,
@@ -640,6 +642,19 @@ class WC_GFPA_Main {
 			// Loading main form object (supports serialized strings as well as JSON strings)
 			$form   = GFFormsModel::unserialize( rgar( $form_row, 'display_meta' ) );
 			$fields = $form['fields'] = is_array( rgar( $form, 'fields' ) ) ? array_values( $form['fields'] ) : array();
+
+			// Remove any properties from the fields that are not simple values.
+			$fields = array_map(function($field) {
+				return array_filter($field, function($value) {
+					return !is_array($value) && !is_object($value);
+				});
+			}, $fields);
+
+			// Remove the fields that are not visible.
+			$fields = array_filter( $fields, function ( $field ) {
+				return ! rgar( $field, 'adminOnly' );
+			} );
+
 			$hash   = md5( wp_json_encode( $fields ) );
 		}
 

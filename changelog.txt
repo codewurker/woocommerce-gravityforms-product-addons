@@ -1,6 +1,13 @@
 *** Gravity Forms Product Add-Ons Changelog ***
+2024.06.26 - version 3.6.3
+    * Fix: Fix issue with reordering products with file upload fields and required fields.
+    * Fix: Fix issue where variable products could not be added to a Wishlist properly.
+    * Update: Respect the woocommerce_gforms_use_label_as_value setting for fields that do not have entry inputs.
+    * Update: Better handling for Limit purchases to 1 item per order.  Filter the cart_id to remove data that changes or could change between form submissions, but is not related to the actual data of the form.
+
 2024.06.04 - version 3.6.2
     * Update: Update the display for checkbox type fields (regular and product options) to display better in checkout blocks.
+    * Internal: Update package dependencies and include a version check script.
 
 2024.05.24 - version 3.6.1
     * Fix: Fix issue with the mutation observer causing an infinate loop on some sites where gform is not available.

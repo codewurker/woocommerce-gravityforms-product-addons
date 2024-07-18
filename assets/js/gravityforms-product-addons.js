@@ -8,7 +8,6 @@ function gform_product_total(formId, total) {
     } else {
         return update_dynamic_price(total, formId);
     }
-
 }
 
 function get_gravity_forms_price(formId) {

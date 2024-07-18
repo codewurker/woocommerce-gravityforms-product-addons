@@ -54,7 +54,7 @@ class WC_GFPA_Cart_Validation {
 			// The _gravity_form_hash is set in the WC_GFPA_Product_Addons::add_cart_item_data() method.
 			$cart_item_form_field_hash = $cart_item['_gravity_form_hash'];
 
-			if ( $form_fields_hash !== $cart_item_form_field_hash ) {
+			if ($cart_item_form_field_hash && $form_fields_hash !== $cart_item_form_field_hash ) {
 				GFCommon::log_debug( __METHOD__ . '(): Form fields have changed for product ' . $cart_item['product_id'] . '. Revalidating.' );
 
 				// Use the submission helper to revalidate the data.
